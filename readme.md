@@ -36,7 +36,7 @@ Raisin has actual comments
 
 In normal Branflakes, a lot of duplicate code is created because of the lack of any abstraction
 
-In Raisin, this is fixed by adding macros
+In Raisin, this is fixed(for sure, totally) by adding macros
 ```
 #add3{+++}
 

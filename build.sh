@@ -6,12 +6,31 @@ fi
 
 mkdir out
 
+clear
+echo "building compiler..."
 # shellcheck disable=SC2164
 cd compiler
-clang++ -o ../out/raisic main.cpp
+if ! clang++ -o ../out/raisic main.cpp; then
+    echo "compiler build failed, exiting"
+    exit 1
+fi
+clear
+echo "compiler built successfully"
+
 # shellcheck disable=SC2103
 cd ..
+
+clear
+echo "building virtual machine..."
 # shellcheck disable=SC2164
 cd vm
-clang++ -o ../out/raisin main.cpp
+if ! clang++ -o ../out/raisin main.cpp; then
+    echo "virtual machine build failed, exiting"
+    exit 1
+fi
+clear
+echo "virtual machine built successfully"
+
 cd ..
+clear
+echo "compiler and virtual machine built successfully"

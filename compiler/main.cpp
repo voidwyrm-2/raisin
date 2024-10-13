@@ -1,18 +1,40 @@
 #include <fstream>
 #include <iostream>
+
+#include "../include/argpp.hpp"
 using namespace std;
+using namespace argpp;
 
 #include "raisic.hpp"
 
 int main(int argc, char** argv) {
-    if (argc != 2) {
-        std::cout << "expected 'raisic <path>'\n";
+    Flag help("h", "help", "Lists the flags and usage");
+    Flag version("v", "version", "Shows the current Raisic version");
+    auto flags = vector<Flag>();
+    flags.push_back(help);
+    flags.push_back(version);
+
+    Parser parser(argc, argv, flags, "raisic");
+
+    auto parsed = parser.parse();
+
+    if (parsed.first.at(version.mkey()).exists) {
+        cout << parser.help() << "\n";
+        return 0;
+    }
+    if (parsed.first.at(version.mkey()).exists) {
+        cout << "Raisic version 1.0\n";
+        return 0;
+    }
+
+    if (parsed.second.size() != 2) {
+        cout << "expected 'raisic <path> " << parser.flag_usage() << "'\n";
         return 1;
     }
 
     ifstream file(argv[1]);
     if (!file.is_open()) {
-        std::cout << "error: could not open file '" << argv[1] << "'\n";
+        cout << "error: could not open file '" << argv[1] << "'\n";
         return 1;
     }
 
@@ -31,9 +53,9 @@ int main(int argc, char** argv) {
 
     // std::cout << "file content: '" << content << "'\n";
 
-    raisic::CompResult* result = raisic::Compile(content);
-    if (!result->err.empty()) {
-        std::cout << result->err << "\n";
+    pair<vector<char>*, string>* result = raisic::Compile(content, false, true);
+    if (!result->second.empty()) {
+        cout << result->second << "\n";
         return 1;
     }
 

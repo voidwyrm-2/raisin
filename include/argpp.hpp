@@ -1,4 +1,4 @@
-// v1.1
+// v1.2
 #pragma once
 
 #include <map>
@@ -9,6 +9,9 @@ using namespace std;
 
 namespace argpp {
 
+/*
+A command-line flag.
+*/
 struct Flag {
    private:
     string shorthand, sh, longhand, lh, description;
@@ -101,7 +104,7 @@ struct Flag {
 };
 
 /*
-Holds the value of the flag if it has one and if the flag was found.
+Holds if the flag was found and the value of the flag if it has one.
 */
 struct ParseResult {
    public:
@@ -188,6 +191,10 @@ class Parser {
         this->description = description;
     }
 
+    /*
+    Generates the help message that usually shows when `-h` or `--help` is given
+    as a flag.
+    */
     string help() {
         string out = this->usage() + "\n";
 
@@ -228,16 +235,24 @@ class Parser {
             out += "\n  " + fh.first + spacing + fh.second;
         }
 
+        while (out[out.size() - 1] == '\n') out.pop_back();
+
         return out;
     }
 
+    /*
+    Generates the usage, e.g. `usage: app [-h|--help] [-s|--say <value>]`.
+    */
     string usage() {
-        string use = "usage: " + this->name;
+        string use = this->name;
         string fu = this->flag_usage();
         if (!fu.empty()) use += " " + fu;
         return use;
     }
 
+    /*
+    Generates the flag part of the usage e.g. `[-h|--help] [-s|--say <value>]`.
+    */
     string flag_usage() {
         string use = "";
         int c = 0;

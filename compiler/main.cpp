@@ -53,9 +53,14 @@ int main(int argc, char** argv) {
 
     // std::cout << "file content: '" << content << "'\n";
 
-    pair<vector<char>*, string>* result = raisic::Compile(content, false, true);
-    if (!result->second.empty()) {
-        cout << result->second << "\n";
+    if (content.empty()) {
+        cout << "file is empty";
+        return 1;
+    }
+
+    pair<vector<char>, string> result = raisic::Compile(content, false, true);
+    if (!result.second.empty()) {
+        cout << result.second << "\n";
         return 1;
     }
 

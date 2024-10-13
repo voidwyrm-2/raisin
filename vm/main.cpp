@@ -48,6 +48,11 @@ int main(int argc, char** argv) {
     }
     file.close();
 
+    if (content.empty()) {
+        cout << "file is empty";
+        return 1;
+    }
+
     int fJump = 0;
     int bJump = 0;
     for (int b : content) {

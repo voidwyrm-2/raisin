@@ -158,10 +158,10 @@ class Lexer {
     Token chtoken(Tokentype type) {
         string s = " ";
         s[0] = this->ch;
-        return *(new Token(type, s, this->col, this->col, this->ln));
+        return Token(type, s, this->col, this->col, this->ln);
     }
 
-    pair<Token*, string>* collectComment() {
+    pair<Token, string> collectComment() {
         int start = this->idx;
         int startcol = this->col;
         int startln = this->ln;
@@ -178,8 +178,8 @@ class Lexer {
         }
 
         if (this->ch != '/') {
-            return new pair<Token*, string>(
-                nullptr, this->error("unterminated ", startln, startcol));
+            return pair<Token, string>(
+                Token(), this->error("unterminated ", startln, startcol));
         }
         this->advance();
 
@@ -188,12 +188,11 @@ class Lexer {
             com.pop_back();
         }
 
-        return new pair<Token*, string>(
-            new Token(Tokentypes::Comment, com, start, this->idx - 1, startln),
-            "");
+        return pair<Token, string>(
+            Token(Tokentypes::Comment, com, start, this->idx - 1, startln), "");
     }
 
-    Token* collectIdent(Tokentype returnAs, bool alreadyMoved = false) {
+    Token collectIdent(Tokentype returnAs, bool alreadyMoved = false) {
         int start = this->col;
         if (alreadyMoved) start--;
         int startln = this->ln;
@@ -207,7 +206,7 @@ class Lexer {
             this->advance();
         }
 
-        return new Token(returnAs, ident, start, this->col - 1, startln);
+        return Token(returnAs, ident, start, this->col - 1, startln);
     }
 
    public:
@@ -221,8 +220,8 @@ class Lexer {
         this->advance();
     }
 
-    pair<vector<raisicLexer::Token>*, string>* lex() {
-        vector<Token>* tokens = new vector<Token>();
+    pair<vector<raisicLexer::Token>, string> lex() {
+        vector<Token> tokens = vector<Token>();
 
         while (this->ch != -1) {
             switch (this->ch) {
@@ -243,7 +242,7 @@ class Lexer {
                 case '_':
                 case '\'':
                 case '`':
-                    tokens->push_back(this->chtoken(Tokentypes::Command));
+                    tokens.push_back(this->chtoken(Tokentypes::Command));
                     this->advance();
                     break;
 
@@ -262,43 +261,42 @@ class Lexer {
                     */
 
                 case '{':
-                    tokens->push_back(this->chtoken(Tokentypes::OpeningBrace));
+                    tokens.push_back(this->chtoken(Tokentypes::OpeningBrace));
                     this->advance();
                     break;
 
                 case '}':
-                    tokens->push_back(this->chtoken(Tokentypes::ClosingBrace));
+                    tokens.push_back(this->chtoken(Tokentypes::ClosingBrace));
                     this->advance();
                     break;
 
                 case '/': {
-                    pair<Token*, string>* res = new pair<Token*, string>();
-                    res = this->collectComment();
-                    if (!res->second.empty()) {
-                        return new pair<vector<raisicLexer::Token>*, string>(
-                            new vector<Token>(), res->second);
+                    pair<Token, string> res = this->collectComment();
+                    if (!res.second.empty()) {
+                        return pair<vector<raisicLexer::Token>, string>(
+                            vector<Token>(), res.second);
                     }
-                    tokens->push_back(*res->first);
+                    tokens.push_back(res.first);
                 } break;
 
                 case '#': {
                     this->advance();
-                    Token* res = this->collectIdent(Tokentypes::Macro, true);
-                    if (*res == "") {
-                        return new pair<vector<raisicLexer::Token>*, string>(
-                            new vector<Token>(),
+                    Token res = this->collectIdent(Tokentypes::Macro, true);
+                    if (res == "") {
+                        return pair<vector<raisicLexer::Token>, string>(
+                            vector<Token>(),
                             this->error("macro names cannot be empty"));
                     }
-                    tokens->push_back(*res);
+                    tokens.push_back(res);
                 } break;
 
                 default:
-                    return new pair<vector<raisicLexer::Token>*, string>(
-                        new vector<Token>(), this->illegalCharacter());
+                    return pair<vector<raisicLexer::Token>, string>(
+                        vector<Token>(), this->illegalCharacter());
             }
         }
 
-        return new pair<vector<raisicLexer::Token>*, string>(tokens, "");
+        return pair<vector<raisicLexer::Token>, string>(tokens, "");
     }
 };
 
@@ -412,60 +410,59 @@ class Parser {
                to_string(t.getCol() + 1) + ": " + msg;
     }
 
-    pair<MacroDefinitionNode*, string>* collectMacroDefinition(Token name) {
-        vector<Node*>* macroContent = new vector<Node*>();
+    pair<MacroDefinitionNode*, string> collectMacroDefinition(Token name) {
+        vector<Node*> macroContent = vector<Node*>();
         Token openingBrace = this->peek();
 
-        stack<Token>* jmpAhead = new stack<Token>();
-        stack<Token>* jmpBack = new stack<Token>();
+        stack<Token> jmpAhead = stack<Token>();
+        stack<Token> jmpBack = stack<Token>();
 
         while (this->tok != Tokentypes::Empty &&
                this->tok != Tokentypes::ClosingBrace) {
             if (this->tok == Tokentypes::Command) {
                 if (this->tok == "[") {
-                    jmpAhead->push(this->tok);
+                    jmpAhead.push(this->tok);
                 } else if (this->tok == "]") {
-                    jmpBack->push(this->tok);
+                    jmpBack.push(this->tok);
                 }
 
-                macroContent->push_back(new CommandNode(this->tok));
+                macroContent.push_back(new CommandNode(this->tok));
                 this->advance();
             } else if (this->tok == Tokentypes::Macro) {
-                macroContent->push_back(new MacroCallNode(this->tok));
+                macroContent.push_back(new MacroCallNode(this->tok));
                 this->advance();
             } else {
-                return new pair<MacroDefinitionNode*, string>(
-                    new MacroDefinitionNode(*(new Token()),
-                                            *(new vector<Node*>())),
+                return pair<MacroDefinitionNode*, string>(
+                    new MacroDefinitionNode(Token(), vector<Node*>()),
                     this->error("unexpected token '" + this->tok.getLit() +
                                 "'"));
             }
         }
 
         if (this->tok == Tokentypes::Empty) {
-            return new pair<MacroDefinitionNode*, string>(
-                new MacroDefinitionNode(*(new Token()), *(new vector<Node*>())),
+            return pair<MacroDefinitionNode*, string>(
+                new MacroDefinitionNode(Token(), vector<Node*>()),
                 this->error("no '}' to close '{'", openingBrace));
-        } else if (jmpAhead->size() != jmpBack->size()) {
+        } else if (jmpAhead.size() != jmpBack.size()) {
             string br = "[";
-            Token t = jmpAhead->top();
-            if (jmpBack->size() > jmpAhead->size()) {
-                t = jmpBack->top();
+            Token t = jmpAhead.top();
+            if (jmpBack.size() > jmpAhead.size()) {
+                t = jmpBack.top();
                 br = "]";
             }
 
-            return new pair<MacroDefinitionNode*, string>(
-                new MacroDefinitionNode(*(new Token()), *(new vector<Node*>())),
+            return pair<MacroDefinitionNode*, string>(
+                new MacroDefinitionNode(Token(), vector<Node*>()),
                 this->error("unmatched " + br, t));
         }
 
-        return new pair<MacroDefinitionNode*, string>(
-            new MacroDefinitionNode(name, *macroContent), "");
+        return pair<MacroDefinitionNode*, string>(
+            new MacroDefinitionNode(name, macroContent), "");
     }
 
    public:
     Parser(vector<Token> tokens) {
-        this->tokens = *(new vector<Token>);
+        this->tokens = vector<Token>();
         for (Token t : tokens) {
             if (t != Tokentypes::Comment) {
                 this->tokens.push_back(t);
@@ -474,91 +471,92 @@ class Parser {
         this->advance();
     }
 
-    pair<vector<Node*>*, string>* parse() {
-        vector<Node*>* nodes = new vector<Node*>();
+    pair<vector<Node*>, string> parse() {
+        vector<Node*> nodes = vector<Node*>();
 
-        stack<Token>* jmpAhead = new stack<Token>();
-        stack<Token>* jmpBack = new stack<Token>();
+        stack<Token> jmpAhead = stack<Token>();
+        stack<Token> jmpBack = stack<Token>();
 
         while (this->tok != Tokentypes::Empty) {
             cout << this->tok.asString() << "\n";
             if (this->tok == Tokentypes::Command) {
                 if (this->tok == "[") {
-                    jmpAhead->push(this->tok);
+                    jmpAhead.push(this->tok);
                 } else if (this->tok == "]") {
-                    jmpBack->push(this->tok);
+                    jmpBack.push(this->tok);
                 }
 
-                nodes->push_back((Node*)new CommandNode(this->tok));
+                nodes.push_back((Node*)new CommandNode(this->tok));
                 this->advance();
             } else if (this->tok == Tokentypes::Macro) {
                 if (this->peek() == Tokentypes::OpeningBrace) {
                     pair<MacroDefinitionNode*, string>* res =
                         (pair<MacroDefinitionNode*, string>*)malloc(
                             sizeof(pair<MacroDefinitionNode*, string>*));
-                    res = this->collectMacroDefinition(this->tok);
+                    *res = this->collectMacroDefinition(this->tok);
                     if (!res->second.empty()) {
-                        return new pair<vector<Node*>*, string>(
-                            new vector<Node*>(), res->second);
+                        return pair<vector<Node*>, string>(vector<Node*>(),
+                                                           res->second);
                     }
 
                     if (!res->first->empty()) {
-                        nodes->push_back((Node*)res->first);
+                        nodes.push_back((Node*)res->first);
                     }
                 } else {
-                    nodes->push_back(new MacroCallNode(this->tok));
+                    nodes.push_back(new MacroCallNode(this->tok));
                     this->advance();
                 }
             } else {
-                return new pair<vector<Node*>*, string>(
-                    new vector<Node*>(), this->error("unexpected token '" +
-                                                     this->tok.getLit() + "'"));
+                return pair<vector<Node*>, string>(
+                    vector<Node*>(), this->error("unexpected token '" +
+                                                 this->tok.getLit() + "'"));
             }
         }
 
-        if (jmpAhead->size() != jmpBack->size()) {
+        if (jmpAhead.size() != jmpBack.size()) {
             string br = "[";
-            Token t = jmpAhead->top();
-            if (jmpBack->size() > jmpAhead->size()) {
-                t = jmpBack->top();
+            Token t = jmpAhead.top();
+            if (jmpBack.size() > jmpAhead.size()) {
+                t = jmpBack.top();
                 br = "]";
             }
 
-            return new pair<vector<Node*>*, string>(
-                new vector<Node*>(), this->error("unmatched " + br, t));
+            return pair<vector<Node*>, string>(
+                vector<Node*>(), this->error("unmatched " + br, t));
         }
 
-        return new pair<vector<Node*>*, string>(nodes, "");
+        return pair<vector<Node*>, string>(nodes, "");
     }
 };
 }  // namespace raisicParser
 
-pair<vector<char>*, string>* Compile(string code, bool showTokens = false,
-                                     bool showNodes = false) {
-    raisicLexer::Lexer* lexer = new raisicLexer::Lexer(code);
-    pair<vector<raisicLexer::Token>*, string>* lexerResult = lexer->lex();
-    if (!lexerResult->second.empty()) {
-        return new pair<vector<char>*, string>(new vector<char>(),
-                                               lexerResult->second);
+namespace raisicCodeGeneration {
+vector<char> generatonCode() {}
+}  // namespace raisicCodeGeneration
+
+pair<vector<char>, string> Compile(string code, bool showTokens = false,
+                                   bool showNodes = false) {
+    raisicLexer::Lexer lexer(code);
+    pair<vector<raisicLexer::Token>, string> lexerResult = lexer.lex();
+    if (!lexerResult.second.empty()) {
+        return pair<vector<char>, string>(vector<char>(), lexerResult.second);
     }
 
     if (showTokens) {
-        for (raisicLexer::Token t : *lexerResult->first) {
+        for (raisicLexer::Token t : lexerResult.first) {
             cout << t.asString() << "\n";
         }
     }
 
-    raisicParser::Parser* parser =
-        new raisicParser::Parser(*lexerResult->first);
+    raisicParser::Parser parser(lexerResult.first);
 
-    pair<vector<raisicParser::Node*>*, string>* parserResult = parser->parse();
-    if (!lexerResult->second.empty()) {
-        return new pair<vector<char>*, string>(new vector<char>(),
-                                               parserResult->second);
+    pair<vector<raisicParser::Node*>, string> parserResult = parser.parse();
+    if (!lexerResult.second.empty()) {
+        return pair<vector<char>, string>(vector<char>(), parserResult.second);
     }
 
     if (showNodes) {
-        for (raisicParser::Node* n : *parserResult->first) {
+        for (raisicParser::Node* n : parserResult.first) {
             if (*n == raisicParser::Nodetypes::Command) {
                 cout << ((raisicParser::CommandNode*)n)->asString() << "\n";
             } else if (*n == raisicParser::Nodetypes::MacroDefinition) {
@@ -572,7 +570,7 @@ pair<vector<char>*, string>* Compile(string code, bool showTokens = false,
         }
     }
 
-    return new pair<vector<char>*, string>(new vector<char>(), "");
+    return pair<vector<char>, string>(vector<char>(), "");
 }
 
 }  // namespace raisic

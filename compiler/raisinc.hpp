@@ -5,9 +5,9 @@
 #include <vector>
 using namespace std;
 
-namespace raisic {
+namespace raisinc {
 
-namespace raisicLexer {
+namespace raisincLexer {
 const string tokentypeStrings[] = {
     "Empty",           "Command",           "Comment",           "Macro",
     "BuiltinFunction", "OpeningParenthese", "ClosingParenthese", "OpeningBrace",
@@ -220,7 +220,7 @@ class Lexer {
         this->advance();
     }
 
-    pair<vector<raisicLexer::Token>, string> lex() {
+    pair<vector<raisincLexer::Token>, string> lex() {
         vector<Token> tokens = vector<Token>();
 
         while (this->ch != -1) {
@@ -273,7 +273,7 @@ class Lexer {
                 case '/': {
                     pair<Token, string> res = this->collectComment();
                     if (!res.second.empty()) {
-                        return pair<vector<raisicLexer::Token>, string>(
+                        return pair<vector<raisincLexer::Token>, string>(
                             vector<Token>(), res.second);
                     }
                     tokens.push_back(res.first);
@@ -283,7 +283,7 @@ class Lexer {
                     this->advance();
                     Token res = this->collectIdent(Tokentypes::Macro, true);
                     if (res == "") {
-                        return pair<vector<raisicLexer::Token>, string>(
+                        return pair<vector<raisincLexer::Token>, string>(
                             vector<Token>(),
                             this->error("macro names cannot be empty"));
                     }
@@ -291,19 +291,19 @@ class Lexer {
                 } break;
 
                 default:
-                    return pair<vector<raisicLexer::Token>, string>(
+                    return pair<vector<raisincLexer::Token>, string>(
                         vector<Token>(), this->illegalCharacter());
             }
         }
 
-        return pair<vector<raisicLexer::Token>, string>(tokens, "");
+        return pair<vector<raisincLexer::Token>, string>(tokens, "");
     }
 };
 
-}  // namespace raisicLexer
+}  // namespace raisincLexer
 
-namespace raisicParser {
-using raisic::raisicLexer::Token, raisic::raisicLexer::Tokentypes;
+namespace raisincParser {
+using raisinc::raisincLexer::Token, raisinc::raisincLexer::Tokentypes;
 
 const string nodetypeStrings[] = {"CommandNode", "MacroDefinitionNode",
                                   "MacroCallNode"};
@@ -528,42 +528,42 @@ class Parser {
         return pair<vector<Node*>, string>(nodes, "");
     }
 };
-}  // namespace raisicParser
+}  // namespace raisincParser
 
-namespace raisicCodeGeneration {
+namespace raisincCodeGeneration {
 vector<char> generatonCode() {}
-}  // namespace raisicCodeGeneration
+}  // namespace raisincCodeGeneration
 
 pair<vector<char>, string> Compile(string code, bool showTokens = false,
                                    bool showNodes = false) {
-    raisicLexer::Lexer lexer(code);
-    pair<vector<raisicLexer::Token>, string> lexerResult = lexer.lex();
+    raisincLexer::Lexer lexer(code);
+    pair<vector<raisincLexer::Token>, string> lexerResult = lexer.lex();
     if (!lexerResult.second.empty()) {
         return pair<vector<char>, string>(vector<char>(), lexerResult.second);
     }
 
     if (showTokens) {
-        for (raisicLexer::Token t : lexerResult.first) {
+        for (raisincLexer::Token t : lexerResult.first) {
             cout << t.asString() << "\n";
         }
     }
 
-    raisicParser::Parser parser(lexerResult.first);
+    raisincParser::Parser parser(lexerResult.first);
 
-    pair<vector<raisicParser::Node*>, string> parserResult = parser.parse();
+    pair<vector<raisincParser::Node*>, string> parserResult = parser.parse();
     if (!lexerResult.second.empty()) {
         return pair<vector<char>, string>(vector<char>(), parserResult.second);
     }
 
     if (showNodes) {
-        for (raisicParser::Node* n : parserResult.first) {
-            if (*n == raisicParser::Nodetypes::Command) {
-                cout << ((raisicParser::CommandNode*)n)->asString() << "\n";
-            } else if (*n == raisicParser::Nodetypes::MacroDefinition) {
-                cout << ((raisicParser::MacroDefinitionNode*)n)->asString()
+        for (raisincParser::Node* n : parserResult.first) {
+            if (*n == raisincParser::Nodetypes::Command) {
+                cout << ((raisincParser::CommandNode*)n)->asString() << "\n";
+            } else if (*n == raisincParser::Nodetypes::MacroDefinition) {
+                cout << ((raisincParser::MacroDefinitionNode*)n)->asString()
                      << "\n";
-            } else if (*n == raisicParser::Nodetypes::MacroCall) {
-                cout << ((raisicParser::MacroCallNode*)n)->asString() << "\n";
+            } else if (*n == raisincParser::Nodetypes::MacroCall) {
+                cout << ((raisincParser::MacroCallNode*)n)->asString() << "\n";
             } else {
                 cout << n->asString() << "\n";
             }
@@ -573,4 +573,4 @@ pair<vector<char>, string> Compile(string code, bool showTokens = false,
     return pair<vector<char>, string>(vector<char>(), "");
 }
 
-}  // namespace raisic
+}  // namespace raisinc

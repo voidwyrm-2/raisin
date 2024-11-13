@@ -10,7 +10,7 @@ clear
 echo "building compiler..."
 # shellcheck disable=SC2164
 cd compiler
-if ! clang++ -o ../out/raisic main.cpp; then
+if ! clang++ -o ../out/raisinc main.cpp; then
     echo "compiler build failed, exiting"
     exit 1
 fi

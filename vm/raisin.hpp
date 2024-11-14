@@ -117,22 +117,23 @@ class RaisinByte : public LimitedInt {
 
 string RunRaisinBytecode(vector<int> bytes) {
     RaisinByte tape[30000] = {};
-    LimitedInt ptr = *(new LimitedInt(0, 29999));
+    LimitedInt ptr = LimitedInt(0, 29999);
 
     ptr = 0;
 
-    map<int, int> jumps = *(new map<int, int>());
-    stack<int> jumpStack = *(new stack<int>());
+    map<int, int> jumps = map<int, int>();
+    stack<int> jumpStack = stack<int>();
     for (int i = 0; i < bytes.size(); i++) {
         if (bytes[i] == 4) {
             jumpStack.push(i);
         } else if (bytes[i] == 5) {
-            int* p = (int*)malloc(sizeof(int));
+            int* p = new int();
             *p = jumpStack.top();
             jumpStack.pop();
 
             jumps[i] = *p;
             jumps[*p] = i;
+            delete p;
         }
     }
 
@@ -161,7 +162,7 @@ string RunRaisinBytecode(vector<int> bytes) {
                 }
                 break;
             case 6: {  // .
-                char* ch = (char*)malloc(1);
+                char* ch = new char();
                 *ch = (char)tape[ptr.v()].v();
                 if (*ch == 0) {
                     cout << to_string(tape[ptr.v()].v()) << "('')";
@@ -173,15 +174,12 @@ string RunRaisinBytecode(vector<int> bytes) {
                 cout << "type a character: ";
 
                 string* inp = new string();
-                if (!getline(cin, *inp)) {
-                    return "user input error";
-                }
+                if (!getline(cin, *inp)) return "user input error";
 
-                if (inp->empty()) {
+                if (inp->empty())
                     tape[ptr.v()].set(0);
-                } else {
+                else
                     tape[ptr.v()].set(inp->c_str()[0]);
-                }
             } break;
 
             case 8:  // _
@@ -196,9 +194,7 @@ string RunRaisinBytecode(vector<int> bytes) {
                 break;
 
             default: {
-                string* err = new string();
-                *err = "unknown opcode " + to_string(bytes[bi]);
-                return (char*)(err->c_str());
+                return "unknown opcode " + to_string(bytes[bi]);
             }
         }
     }

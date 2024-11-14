@@ -10,7 +10,7 @@ clear
 echo "building compiler..."
 # shellcheck disable=SC2164
 cd compiler
-if ! clang++ -o ../out/raisinc main.cpp; then
+if ! clang++ -std=c++17 -o ../out/raisinc main.cpp; then
     echo "compiler build failed, exiting"
     exit 1
 fi
@@ -24,7 +24,7 @@ clear
 echo "building virtual machine..."
 # shellcheck disable=SC2164
 cd vm
-if ! clang++ -o ../out/raisin main.cpp; then
+if ! clang++ -std=c++11 -o ../out/raisin main.cpp; then
     echo "virtual machine build failed, exiting"
     exit 1
 fi

@@ -179,7 +179,8 @@ class Lexer {
 
         if (this->ch != '/') {
             return pair<Token, string>(
-                Token(), this->error("unterminated ", startln, startcol));
+                Token(),
+                this->error("unterminated comment", startln, startcol));
         }
         this->advance();
 
@@ -312,10 +313,10 @@ typedef enum Nodetype { Command, MacroDefinition, MacroCall } Nodetypes;
 
 class Node {
    protected:
-    Nodetype type;
+    const Nodetype type;
 
    public:
-    Node(Nodetype type) { this->type = type; }
+    Node(Nodetype type) : type(type) {}
 
     bool operator==(Nodetype t) { return this->type == t; }
 
@@ -323,36 +324,30 @@ class Node {
 };
 
 class CommandNode : public Node {
-   private:
-    Token command;
-
    public:
-    CommandNode(Token command) : Node(Nodetypes::Command) {
-        this->command = command;
-    }
+    const Token command;
+
+    CommandNode(Token command) : Node(Nodetypes::Command), command(command) {}
 
     string asString() {
-        return nodetypeStrings[this->type] + "{ " + this->command.asString() +
-               " }";
+        return nodetypeStrings[this->type] + "{ " +
+               ((Token)this->command).asString() + " }";
     }
 };
 
 class MacroDefinitionNode : public Node {
-   private:
-    Token name;
-    vector<Node*> contents;
-
    public:
+    const Token name;
+    const vector<Node*> contents;
+
     MacroDefinitionNode(Token name, vector<Node*> contents)
-        : Node(Nodetypes::MacroDefinition) {
-        this->name = name;
-        this->contents = contents;
-    }
+        : Node(Nodetypes::MacroDefinition), name(name), contents(contents) {}
 
     bool empty() { return this->contents.empty(); }
 
     string asString() {
-        string s = nodetypeStrings[this->type] + "{ " + this->name.asString();
+        string s =
+            nodetypeStrings[this->type] + "{ " + ((Token)this->name).asString();
         if (!this->contents.empty()) {
             s += ", ";
             for (Node* t : this->contents) {
@@ -368,17 +363,14 @@ class MacroDefinitionNode : public Node {
 };
 
 class MacroCallNode : public Node {
-   private:
-    Token name;
-
    public:
-    MacroCallNode(Token name) : Node(Nodetypes::MacroCall) {
-        this->name = name;
-    }
+    const Token name;
+
+    MacroCallNode(Token name) : Node(Nodetypes::MacroCall), name(name) {}
 
     string asString() {
-        return nodetypeStrings[this->type] + "{ " + this->name.asString() +
-               " }";
+        return nodetypeStrings[this->type] + "{ " +
+               ((Token)this->name).asString() + " }";
     }
 };
 
@@ -390,21 +382,17 @@ class Parser {
 
     void advance(int amount = 1) {
         this->idx += amount;
-        if (this->idx < this->tokens.size()) {
-            tok = this->tokens[this->idx];
-        } else {
-            tok = *(new Token());
-        }
+        this->tok =
+            this->idx < this->tokens.size() ? this->tokens[this->idx] : Token();
     }
 
     Token peek() {
-        if (this->idx + 1 < this->tokens.size()) {
+        if (this->idx + 1 < this->tokens.size())
             return this->tokens[this->idx + 1];
-        }
-        return *(new Token());
+        return Token();
     }
 
-    string error(string msg, Token t = *(new Token())) {
+    string error(string msg, Token t = Token()) {
         if (t == Tokentypes::Empty) t = this->tok;
         return "error on line " + to_string(t.getLn() + 1) + ", col " +
                to_string(t.getCol() + 1) + ": " + msg;
@@ -412,24 +400,27 @@ class Parser {
 
     pair<MacroDefinitionNode*, string> collectMacroDefinition(Token name) {
         vector<Node*> macroContent = vector<Node*>();
+        this->advance();
         Token openingBrace = this->peek();
 
         stack<Token> jmpAhead = stack<Token>();
         stack<Token> jmpBack = stack<Token>();
 
+        this->advance();
+
         while (this->tok != Tokentypes::Empty &&
                this->tok != Tokentypes::ClosingBrace) {
+            // cout << this->tok.asString() << "\n";
             if (this->tok == Tokentypes::Command) {
-                if (this->tok == "[") {
+                if (this->tok == "[")
                     jmpAhead.push(this->tok);
-                } else if (this->tok == "]") {
+                else if (this->tok == "]")
                     jmpBack.push(this->tok);
-                }
 
-                macroContent.push_back(new CommandNode(this->tok));
+                macroContent.push_back((Node*)new CommandNode(this->tok));
                 this->advance();
             } else if (this->tok == Tokentypes::Macro) {
-                macroContent.push_back(new MacroCallNode(this->tok));
+                macroContent.push_back((Node*)new MacroCallNode(this->tok));
                 this->advance();
             } else {
                 return pair<MacroDefinitionNode*, string>(
@@ -456,6 +447,8 @@ class Parser {
                 this->error("unmatched " + br, t));
         }
 
+        this->advance();
+
         return pair<MacroDefinitionNode*, string>(
             new MacroDefinitionNode(name, macroContent), "");
     }
@@ -464,10 +457,15 @@ class Parser {
     Parser(vector<Token> tokens) {
         this->tokens = vector<Token>();
         for (Token t : tokens) {
-            if (t != Tokentypes::Comment) {
-                this->tokens.push_back(t);
-            }
+            if (t != Tokentypes::Comment) this->tokens.push_back(t);
         }
+
+        if (!tokens.empty()) {
+            if (tokens.back() != Tokentypes::Empty) tokens.push_back(Token());
+        }
+
+        this->idx = -1;
+        this->tok = Token();
         this->advance();
     }
 
@@ -478,32 +476,23 @@ class Parser {
         stack<Token> jmpBack = stack<Token>();
 
         while (this->tok != Tokentypes::Empty) {
-            cout << this->tok.asString() << "\n";
             if (this->tok == Tokentypes::Command) {
-                if (this->tok == "[") {
+                if (this->tok == "[")
                     jmpAhead.push(this->tok);
-                } else if (this->tok == "]") {
+                else if (this->tok == "]")
                     jmpBack.push(this->tok);
-                }
 
                 nodes.push_back((Node*)new CommandNode(this->tok));
                 this->advance();
             } else if (this->tok == Tokentypes::Macro) {
                 if (this->peek() == Tokentypes::OpeningBrace) {
-                    pair<MacroDefinitionNode*, string>* res =
-                        (pair<MacroDefinitionNode*, string>*)malloc(
-                            sizeof(pair<MacroDefinitionNode*, string>*));
-                    *res = this->collectMacroDefinition(this->tok);
-                    if (!res->second.empty()) {
+                    auto r = this->collectMacroDefinition(this->tok);
+                    if (!r.second.empty())
                         return pair<vector<Node*>, string>(vector<Node*>(),
-                                                           res->second);
-                    }
-
-                    if (!res->first->empty()) {
-                        nodes.push_back((Node*)res->first);
-                    }
+                                                           r.second);
+                    nodes.push_back((Node*)(r.first));
                 } else {
-                    nodes.push_back(new MacroCallNode(this->tok));
+                    nodes.push_back((Node*)new MacroCallNode(this->tok));
                     this->advance();
                 }
             } else {
@@ -531,7 +520,55 @@ class Parser {
 }  // namespace raisincParser
 
 namespace raisincCodeGeneration {
-vector<char> generatonCode() {}
+using raisinc::raisincLexer::Token, raisinc::raisincParser::Node,
+    raisinc::raisincParser::CommandNode,
+    raisinc::raisincParser::MacroDefinitionNode,
+    raisinc::raisincParser::MacroCallNode, raisinc::raisincParser::Nodetypes;
+
+map<string, char> commandCodes = {{"+", 0}, {"-", 2},  {">", 3}, {"<", 4},
+                                  {"[", 5}, {"]", 6},  {".", 7}, {",", 8},
+                                  {"_", 9}, {"'", 10}, {"`", 11}};
+
+pair<vector<char>, string> generateCode(vector<raisincParser::Node*> nodes) {
+    auto macros = map<string, MacroDefinitionNode*>();
+    auto bytes = vector<char>();
+
+    for (raisincParser::Node* n : nodes) {
+        if (*n == Nodetypes::MacroDefinition) {
+            string* name = new string();
+            *name = ((Token)((MacroDefinitionNode*)n)->name).getLit();
+            if (macros.count(*name) == 1)
+                return pair<vector<char>, string>(
+                    vector<char>(), "cannot redefine macro '" + *name + "'");
+
+            macros[*name] = (MacroDefinitionNode*)n;
+            delete name;
+        }
+    }
+
+    for (raisincParser::Node* n : nodes) {
+        if (*n == Nodetypes::Command) {
+            bytes.push_back(
+                commandCodes[((Token)((MacroCallNode*)n)->name).getLit()]);
+        } else if (*n == Nodetypes::MacroCall) {
+            string* name = new string();
+            *name = ((Token)((MacroCallNode*)n)->name).getLit();
+            if (macros.count(*name) == 0)
+                return pair<vector<char>, string>(
+                    vector<char>(), "macro '" + *name + "' is undefined");
+
+            auto r = generateCode(macros[*name]->contents);
+            if (!r.second.empty())
+                return pair<vector<char>, string>(vector<char>(), r.second);
+
+            for (char b : r.first) bytes.push_back(b);
+
+            delete name;
+        }
+    }
+
+    return pair<vector<char>, string>(bytes, "");
+}
 }  // namespace raisincCodeGeneration
 
 pair<vector<char>, string> Compile(string code, bool showTokens = false,
@@ -543,17 +580,16 @@ pair<vector<char>, string> Compile(string code, bool showTokens = false,
     }
 
     if (showTokens) {
-        for (raisincLexer::Token t : lexerResult.first) {
+        for (raisincLexer::Token t : lexerResult.first)
             cout << t.asString() << "\n";
-        }
+        if (showNodes) cout << "\n";
     }
 
     raisincParser::Parser parser(lexerResult.first);
 
     pair<vector<raisincParser::Node*>, string> parserResult = parser.parse();
-    if (!lexerResult.second.empty()) {
+    if (!lexerResult.second.empty())
         return pair<vector<char>, string>(vector<char>(), parserResult.second);
-    }
 
     if (showNodes) {
         for (raisincParser::Node* n : parserResult.first) {
@@ -570,7 +606,7 @@ pair<vector<char>, string> Compile(string code, bool showTokens = false,
         }
     }
 
-    return pair<vector<char>, string>(vector<char>(), "");
+    return raisincCodeGeneration::generateCode(parserResult.first);
 }
 
 }  // namespace raisinc

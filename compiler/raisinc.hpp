@@ -525,9 +525,9 @@ using raisinc::raisincLexer::Token, raisinc::raisincParser::Node,
     raisinc::raisincParser::MacroDefinitionNode,
     raisinc::raisincParser::MacroCallNode, raisinc::raisincParser::Nodetypes;
 
-map<string, char> commandCodes = {{"+", 0}, {"-", 2},  {">", 3}, {"<", 4},
-                                  {"[", 5}, {"]", 6},  {".", 7}, {",", 8},
-                                  {"_", 9}, {"'", 10}, {"`", 11}};
+map<string, char> commandCodes = {{"+", 0}, {"-", 1}, {">", 2}, {"<", 3},
+                                  {"[", 4}, {"]", 5}, {".", 6}, {",", 7},
+                                  {"_", 8}, {"'", 9}, {"`", 10}};
 
 pair<vector<char>, string> generateCode(vector<raisincParser::Node*> nodes) {
     auto macros = map<string, MacroDefinitionNode*>();

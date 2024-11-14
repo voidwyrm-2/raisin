@@ -83,8 +83,6 @@ int main(int argc, char** argv) {
 
     ofstream outfile(outputName, ios::binary);
 
-    cout << "is file open? " << outfile.is_open() << "\n";
-
     outfile.write(result.first.data(), result.first.size());
 
     outfile.close();
